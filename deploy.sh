@@ -7,7 +7,8 @@ set -e
 PROJECT_ID="bloom-496623"
 REGION="europe-west2"        # London
 SERVICE_NAME="bloom"
-IMAGE="gcr.io/$PROJECT_ID/$SERVICE_NAME"
+REPO="bloom-repo"
+IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$REPO/$SERVICE_NAME"
 SA_NAME="bloom-sa"
 SA_EMAIL="$SA_NAME@$PROJECT_ID.iam.gserviceaccount.com"
 
