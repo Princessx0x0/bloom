@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bloom — What's Wrong With My Plant?</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sage: #7a9e7e;
+            --sage-light: #a8c5a0;
+            --sage-dark: #4a6741;
+            --cream: #f7f3ed;
+            --warm-white: #fdfaf6;
+            --soil: #8b6347;
+            --soil-light: #c4a882;
+            --text: #2c2c2c;
+            --text-muted: #7a7a7a;
+            --healthy: #4a8c5c;
+            --struggling: #c4833a;
+            --critical: #b85555;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--warm-white);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Background texture */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(122, 158, 126, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(139, 99, 71, 0.06) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 24px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        header {
+            padding: 48px 0 32px;
+            text-align: center;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            color: var(--sage-dark);
+            letter-spacing: -0.5px;
+        }
+
+        .tagline {
+            font-size: 15px;
+            color: var(--text-muted);
+            font-weight: 300;
+            letter-spacing: 0.3px;
+        }
+
+        /* Upload Zone */
+        .upload-section {
+            margin: 40px 0;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--sage-light);
+            border-radius: 24px;
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(168, 197, 160, 0.04);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-zone::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(122, 158, 126, 0.06) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--sage);
+            background: rgba(168, 197, 160, 0.08);
+        }
+
+        .upload-zone:hover::before {
+            opacity: 1;
+        }
+
+        .upload-zone.dragging {
+            border-color: var(--sage-dark);
+            background: rgba(122, 158, 126, 0.1);
+            transform: scale(1.01);
+        }
+
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 20px;
+            opacity: 0.6;
+        }
+
+        .upload-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            color: var(--sage-dark);
+            margin-bottom: 8px;
+        }
+
+        .upload-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .upload-btn {
+            display: inline-block;
+            background: var(--sage-dark);
+            color: white;
+            padding: 12px 28px;
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            letter-spacing: 0.3px;
+        }
+
+        .upload-btn:hover {
+            background: var(--sage);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(74, 103, 65, 0.25);
+        }
+
+        #fileInput { display: none; }
+
+        /* Preview */
+        .preview-image {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 16px;
+            display: none;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 48px 0;
+        }
+
+        .loading.active { display: block; }
+
+        .plant-loader {
+            display: inline-block;
+            font-size: 48px;
+            animation: sway 2s ease-in-out infinite;
+            margin-bottom: 16px;
+        }
+
+        @keyframes sway {
+            0%, 100% { transform: rotate(-5deg); }
+            50% { transform: rotate(5deg); }
+        }
+
+        .loading-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            color: var(--sage-dark);
+            margin-bottom: 8px;
+        }
+
+        .loading-sub {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Results */
+        .results {
+            display: none;
+            animation: fadeUp 0.6s ease forwards;
+        }
+
+        .results.active { display: block; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Plant Identity Card */
+        .plant-identity {
+            background: white;
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .plant-identity-info { flex: 1; }
+
+        .plant-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .scientific-name {
+            font-style: italic;
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .health-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .health-badge.healthy { background: rgba(74, 140, 92, 0.12); color: var(--healthy); }
+        .health-badge.struggling { background: rgba(196, 131, 58, 0.12); color: var(--struggling); }
+        .health-badge.critical { background: rgba(184, 85, 85, 0.12); color: var(--critical); }
+
+        .health-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Image comparison */
+        .image-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .image-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+        }
+
+        .image-card img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+        }
+
+        .image-card-label {
+            padding: 14px 18px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .healthy-placeholder {
+            width: 100%;
+            height: 220px;
+            background: linear-gradient(135deg, rgba(122, 158, 126, 0.15), rgba(74, 103, 65, 0.1));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .healthy-placeholder span { font-size: 40px; }
+        .healthy-placeholder p { font-size: 13px; color: var(--text-muted); }
+
+        /* Diagnosis */
+        .diagnosis-card {
+            background: white;
+            border-radius: 20px;
+            padding: 28px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+        }
+
+        .card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 18px;
+            color: var(--text);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .diagnosis-text {
+            font-size: 15px;
+            line-height: 1.7;
+            color: var(--text);
+            margin-bottom: 20px;
+        }
+
+        .symptoms-list {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .symptom-tag {
+            background: rgba(184, 85, 85, 0.08);
+            color: var(--critical);
+            padding: 6px 14px;
+            border-radius: 100px;
+            font-size: 13px;
+        }
+
+        /* Treatment */
+        .treatment-steps {
+            list-style: none;
+            counter-reset: steps;
+        }
+
+        .treatment-step {
+            counter-increment: steps;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .treatment-step:last-child { border-bottom: none; }
+
+        .step-number {
+            width: 28px;
+            height: 28px;
+            background: var(--sage-dark);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text);
+            padding-top: 4px;
+        }
+
+        /* Care tip */
+        .care-tip {
+            background: linear-gradient(135deg, rgba(122, 158, 126, 0.1), rgba(168, 197, 160, 0.08));
+            border-left: 3px solid var(--sage);
+            border-radius: 0 12px 12px 0;
+            padding: 16px 20px;
+            margin-top: 20px;
+        }
+
+        .care-tip-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--sage-dark);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .care-tip-text {
+            font-size: 14px;
+            color: var(--text);
+            line-height: 1.6;
+            font-style: italic;
+        }
+
+        /* Recovery */
+        .recovery-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(122, 158, 126, 0.1);
+            color: var(--sage-dark);
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-size: 13px;
+            margin-top: 16px;
+        }
+
+        /* Try again */
+        .try-again {
+            text-align: center;
+            padding: 32px 0 48px;
+        }
+
+        .try-again-btn {
+            background: transparent;
+            border: 2px solid var(--sage-light);
+            color: var(--sage-dark);
+            padding: 12px 28px;
+            border-radius: 100px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .try-again-btn:hover {
+            background: var(--sage-dark);
+            border-color: var(--sage-dark);
+            color: white;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 24px 0 48px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        footer span { color: var(--sage); }
+
+        /* Error */
+        .error-card {
+            background: rgba(184, 85, 85, 0.06);
+            border: 1px solid rgba(184, 85, 85, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            display: none;
+        }
+
+        .error-card.active { display: block; }
+
+        /* History */
+        .history-section {
+            margin-bottom: 40px;
+        }
+
+        .history-item {
+            background: white;
+            border-radius: 14px;
+            padding: 16px 20px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            animation: fadeUp 0.4s ease forwards;
+        }
+
+        .history-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .history-dot.healthy    { background: var(--healthy); }
+        .history-dot.struggling { background: var(--struggling); }
+        .history-dot.critical   { background: var(--critical); }
+
+        .history-info { flex: 1; }
+
+        .history-plant {
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .history-diagnosis {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 500px;
+        }
+
+        .history-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 600px) {
+            .image-comparison { grid-template-columns: 1fr; }
+            .plant-identity { flex-direction: column; text-align: center; }
+            .upload-zone { padding: 40px 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 36 36" fill="none">
+                    <path d="M18 32C18 32 6 24 6 14C6 8.477 11.373 4 18 4C24.627 4 30 8.477 30 14C30 24 18 32 18 32Z" fill="#7a9e7e" opacity="0.3"/>
+                    <path d="M18 28C18 28 8 21 8 13C8 8.582 12.477 5 18 5C23.523 5 28 8.582 28 13C28 21 18 28 18 28Z" fill="#4a6741" opacity="0.6"/>
+                    <path d="M18 6V30M18 6C18 6 12 10 12 16M18 6C18 6 24 10 24 16" stroke="#4a6741" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <span class="logo-text">Bloom</span>
+            </div>
+            <p class="tagline">Your plant can't speak. We can help.</p>
+        </header>
+
+        <!-- Upload Section -->
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-zone" id="uploadZone">
+                <svg class="upload-icon" viewBox="0 0 64 64" fill="none">
+                    <circle cx="32" cy="32" r="28" fill="rgba(122,158,126,0.1)"/>
+                    <path d="M32 12C32 12 20 20 20 30C20 36.627 25.373 42 32 42C38.627 42 44 36.627 44 30C44 20 32 12 32 12Z" fill="rgba(122,158,126,0.3)"/>
+                    <path d="M32 18V42M32 18C32 18 26 23 26 29M32 18C32 18 38 23 38 29" stroke="#4a6741" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M24 50H40" stroke="#7a9e7e" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <h2 class="upload-title">Show me your plant</h2>
+                <p class="upload-subtitle">Upload a photo and I'll tell you exactly what it needs</p>
+                <label class="upload-btn" for="fileInput">Choose a photo</label>
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+            <img class="preview-image" id="previewImage" alt="Plant preview">
+        </div>
+
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="plant-loader">🌿</div>
+            <p class="loading-text">Reading your plant...</p>
+            <p class="loading-sub">Diagnosing with Gemini Vision</p>
+        </div>
+
+        <!-- Error -->
+        <div class="error-card" id="errorCard">
+            <p style="font-size:32px;margin-bottom:12px">🥀</p>
+            <p style="font-size:15px;color:#b85555;margin-bottom:8px">Something went wrong</p>
+            <p style="font-size:13px;color:#7a7a7a" id="errorText"></p>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results">
+
+            <!-- Plant Identity -->
+            <div class="plant-identity">
+                <div class="plant-identity-info">
+                    <h1 class="plant-name" id="plantName">—</h1>
+                    <p class="scientific-name" id="scientificName">—</p>
+                    <span class="health-badge" id="healthBadge">
+                        <span class="health-dot"></span>
+                        <span id="healthText">—</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Image Comparison -->
+            <div class="image-comparison">
+                <div class="image-card">
+                    <img id="uploadedPlantImg" src="" alt="Your plant">
+                    <div class="image-card-label">🪴 Your plant now</div>
+                </div>
+                <div class="image-card">
+                    <div class="healthy-placeholder" id="healthyPlaceholder">
+                        <span>✨</span>
+                        <p>Generating healthy version...</p>
+                    </div>
+                    <img id="healthyPlantImg" src="" alt="Healthy version" style="display:none;width:100%;height:220px;object-fit:cover;">
+                    <div class="image-card-label">🌟 At full health</div>
+                </div>
+            </div>
+
+            <!-- Diagnosis -->
+            <div class="diagnosis-card">
+                <h3 class="card-title">🔍 What I see</h3>
+                <p class="diagnosis-text" id="diagnosisText">—</p>
+                <ul class="symptoms-list" id="symptomsList"></ul>
+
+                <div class="care-tip" id="careTip">
+                    <p class="care-tip-label">🌱 Plant personality</p>
+                    <p class="care-tip-text" id="careTipText">—</p>
+                </div>
+
+                <div class="recovery-badge" id="recoveryBadge">
+                    <span>⏱</span>
+                    <span id="recoveryText">—</span>
+                </div>
+            </div>
+
+            <!-- Treatment -->
+            <div class="diagnosis-card">
+                <h3 class="card-title">💚 How to help it</h3>
+                <ol class="treatment-steps" id="treatmentSteps"></ol>
+            </div>
+
+            <!-- Try Again -->
+            <div class="try-again">
+                <button class="try-again-btn" onclick="resetApp()">Check another plant</button>
+            </div>
+        </div>
+
+        <!-- Scan History -->
+        <div class="history-section" id="historySection" style="display:none">
+            <h3 class="card-title" style="margin-bottom:16px">🕐 Recent scans</h3>
+            <div id="historyList"></div>
+        </div>
+
+        <footer>
+            Powered by <span>Gemini Vision</span> & <span>Imagen</span> on Google Cloud · <span>Vertex AI</span>
+        </footer>
+    </div>
+
+    <script>
+        // Load scan history on page load
+        async function loadHistory() {
+            try {
+                const res  = await fetch('/history');
+                const data = await res.json();
+                if (!data.scans || data.scans.length === 0) return;
+
+                const section = document.getElementById('historySection');
+                const list    = document.getElementById('historyList');
+                section.style.display = 'block';
+                list.innerHTML = '';
+
+                data.scans.forEach(scan => {
+                    const time = scan.created_at
+                        ? new Date(scan.created_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })
+                        : '';
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.innerHTML = `
+                        <span class="history-dot ${scan.health || ''}"></span>
+                        <div class="history-info">
+                            <p class="history-plant">${scan.plant_name || 'Unknown plant'}</p>
+                            <p class="history-diagnosis">${scan.diagnosis || ''}</p>
+                        </div>
+                        <span class="history-time">${time}</span>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch (e) {
+                // History is non-critical, fail silently
+            }
+        }
+
+        loadHistory();
+
+        // Load scan history on page load
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewImage = document.getElementById('previewImage');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const errorCard = document.getElementById('errorCard');
+        const uploadSection = document.getElementById('uploadSection');
+
+        // Drag and drop
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragging');
+        });
+
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragging'));
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragging');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) handleFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) handleFile(e.target.files[0]);
+        });
+
+        function handleFile(file) {
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadZone.style.display = 'none';
+                previewImage.src = e.target.result;
+                previewImage.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // Upload and diagnose
+            diagnoseFile(file);
+        }
+
+        async function diagnoseFile(file) {
+            loading.classList.add('active');
+            errorCard.classList.remove('active');
+            results.classList.remove('active');
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/diagnose', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    showError(data.error || 'Could not diagnose plant');
+                }
+            } catch (err) {
+                showError('Connection error. Please try again.');
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        function displayResults(data) {
+            const d = data.diagnosis;
+
+            // Plant identity
+            document.getElementById('plantName').textContent = d.plant_name;
+            document.getElementById('scientificName').textContent = d.scientific_name;
+
+            const badge = document.getElementById('healthBadge');
+            badge.className = `health-badge ${d.health_status}`;
+            document.getElementById('healthText').textContent =
+                d.health_status === 'healthy' ? 'Looking healthy!' :
+                d.health_status === 'struggling' ? 'Struggling a little' : 'Needs urgent help';
+
+            // Uploaded image
+            document.getElementById('uploadedPlantImg').src = `data:image/jpeg;base64,${data.uploaded_image}`;
+
+            // Healthy image
+            if (data.healthy_image) {
+                document.getElementById('healthyPlaceholder').style.display = 'none';
+                const img = document.getElementById('healthyPlantImg');
+                img.src = `data:image/jpeg;base64,${data.healthy_image}`;
+                img.style.display = 'block';
+            }
+
+            // Diagnosis
+            document.getElementById('diagnosisText').textContent = d.diagnosis;
+
+            // Symptoms
+            const symptomsList = document.getElementById('symptomsList');
+            symptomsList.innerHTML = '';
+            (d.symptoms || []).forEach(s => {
+                const li = document.createElement('li');
+                li.className = 'symptom-tag';
+                li.textContent = s;
+                symptomsList.appendChild(li);
+            });
+
+            // Care tip
+            document.getElementById('careTipText').textContent = d.care_tip;
+
+            // Recovery
+            document.getElementById('recoveryText').textContent = `Recovery: ${d.recovery_time}`;
+
+            // Treatment
+            const steps = document.getElementById('treatmentSteps');
+            steps.innerHTML = '';
+            (d.treatment || []).forEach((step, i) => {
+                const li = document.createElement('li');
+                li.className = 'treatment-step';
+                li.innerHTML = `
+                    <span class="step-number">${i + 1}</span>
+                    <span class="step-text">${step}</span>
+                `;
+                steps.appendChild(li);
+            });
+
+            results.classList.add('active');
+            results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function showError(message) {
+            document.getElementById('errorText').textContent = message;
+            errorCard.classList.add('active');
+        }
+
+        function resetApp() {
+            uploadZone.style.display = 'block';
+            previewImage.style.display = 'none';
+            previewImage.src = '';
+            results.classList.remove('active');
+            errorCard.classList.remove('active');
+            fileInput.value = '';
+            document.getElementById('healthyPlaceholder').style.display = 'flex';
+            document.getElementById('healthyPlantImg').style.display = 'none';
+            uploadSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
