@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bloom — What's Wrong With My Plant?</title>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --sage: #7a9e7e;
@@ -21,7 +24,11 @@
             --critical: #b85555;
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
             font-family: 'DM Sans', sans-serif;
@@ -36,7 +43,7 @@
             content: '';
             position: fixed;
             inset: 0;
-            background-image: 
+            background-image:
                 radial-gradient(circle at 20% 20%, rgba(122, 158, 126, 0.08) 0%, transparent 50%),
                 radial-gradient(circle at 80% 80%, rgba(139, 99, 71, 0.06) 0%, transparent 50%);
             pointer-events: none;
@@ -164,7 +171,9 @@
             box-shadow: 0 8px 24px rgba(74, 103, 65, 0.25);
         }
 
-        #fileInput { display: none; }
+        #fileInput {
+            display: none;
+        }
 
         /* Preview */
         .preview-image {
@@ -182,7 +191,9 @@
             padding: 48px 0;
         }
 
-        .loading.active { display: block; }
+        .loading.active {
+            display: block;
+        }
 
         .plant-loader {
             display: inline-block;
@@ -192,8 +203,15 @@
         }
 
         @keyframes sway {
-            0%, 100% { transform: rotate(-5deg); }
-            50% { transform: rotate(5deg); }
+
+            0%,
+            100% {
+                transform: rotate(-5deg);
+            }
+
+            50% {
+                transform: rotate(5deg);
+            }
         }
 
         .loading-text {
@@ -214,11 +232,20 @@
             animation: fadeUp 0.6s ease forwards;
         }
 
-        .results.active { display: block; }
+        .results.active {
+            display: block;
+        }
 
         @keyframes fadeUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Plant Identity Card */
@@ -227,13 +254,15 @@
             border-radius: 20px;
             padding: 32px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.06);
             display: flex;
             align-items: center;
             gap: 24px;
         }
 
-        .plant-identity-info { flex: 1; }
+        .plant-identity-info {
+            flex: 1;
+        }
 
         .plant-name {
             font-family: 'Playfair Display', serif;
@@ -259,9 +288,20 @@
             font-weight: 500;
         }
 
-        .health-badge.healthy { background: rgba(74, 140, 92, 0.12); color: var(--healthy); }
-        .health-badge.struggling { background: rgba(196, 131, 58, 0.12); color: var(--struggling); }
-        .health-badge.critical { background: rgba(184, 85, 85, 0.12); color: var(--critical); }
+        .health-badge.healthy {
+            background: rgba(74, 140, 92, 0.12);
+            color: var(--healthy);
+        }
+
+        .health-badge.struggling {
+            background: rgba(196, 131, 58, 0.12);
+            color: var(--struggling);
+        }
+
+        .health-badge.critical {
+            background: rgba(184, 85, 85, 0.12);
+            color: var(--critical);
+        }
 
         .health-dot {
             width: 8px;
@@ -272,14 +312,22 @@
         }
 
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
         }
 
         /* Image comparison */
         .image-comparison {
             display: grid;
-            grid-template-columns: 1fr 1fr;            gap: 16px;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
             margin-bottom: 20px;
         }
 
@@ -287,7 +335,7 @@
             background: white;
             border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.06);
         }
 
         .image-card img {
@@ -317,8 +365,14 @@
             gap: 12px;
         }
 
-        .healthy-placeholder span { font-size: 40px; }
-        .healthy-placeholder p { font-size: 13px; color: var(--text-muted); }
+        .healthy-placeholder span {
+            font-size: 40px;
+        }
+
+        .healthy-placeholder p {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
 
         /* Diagnosis */
         .diagnosis-card {
@@ -326,7 +380,7 @@
             border-radius: 20px;
             padding: 28px;
             margin-bottom: 20px;
-            box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.06);
         }
 
         .card-title {
@@ -373,10 +427,12 @@
             align-items: flex-start;
             gap: 16px;
             padding: 14px 0;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         }
 
-        .treatment-step:last-child { border-bottom: none; }
+        .treatment-step:last-child {
+            border-bottom: none;
+        }
 
         .step-number {
             width: 28px;
@@ -470,7 +526,9 @@
             color: var(--text-muted);
         }
 
-        footer span { color: var(--sage); }
+        footer span {
+            color: var(--sage);
+        }
 
         /* Error */
         .error-card {
@@ -482,7 +540,9 @@
             display: none;
         }
 
-        .error-card.active { display: block; }
+        .error-card.active {
+            display: block;
+        }
 
         /* History */
         .history-section {
@@ -495,7 +555,7 @@
             border-radius: 14px;
             padding: 16px 20px;
             margin-bottom: 10px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
             display: flex;
             align-items: center;
             gap: 16px;
@@ -509,11 +569,21 @@
             flex-shrink: 0;
         }
 
-        .history-dot.healthy    { background: var(--healthy); }
-        .history-dot.struggling { background: var(--struggling); }
-        .history-dot.critical   { background: var(--critical); }
+        .history-dot.healthy {
+            background: var(--healthy);
+        }
 
-        .history-info { flex: 1; }
+        .history-dot.struggling {
+            background: var(--struggling);
+        }
+
+        .history-dot.critical {
+            background: var(--critical);
+        }
+
+        .history-info {
+            flex: 1;
+        }
 
         .history-plant {
             font-weight: 500;
@@ -537,63 +607,125 @@
         }
 
         @media (max-width: 600px) {
-            .image-comparison { grid-template-columns: 1fr; }
-            .plant-identity { flex-direction: column; text-align: center; }
-            .upload-zone { padding: 40px 24px; }
+            .image-comparison {
+                grid-template-columns: 1fr;
+            }
+
+            .plant-identity {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .upload-zone {
+                padding: 40px 24px;
+            }
+
+            header {
+                padding: 32px 0 20px;
+            }
+
+            .logo {
+                justify-content: center;
+            }
+
+            .history-item {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .history-diagnosis {
+                max-width: 100%;
+            }
+
+            .history-time {
+                width: 100%;
+                text-align: right;
+            }
+
+            .container {
+                padding: 0 16px;
+            }
+
+            .plant-name {
+                font-size: 22px;
+            }
+
+            .diagnosis-card {
+                padding: 20px 16px;
+            }
+
+            .overlay-card {
+                padding: 24px 16px;
+            }
+
+            .symptoms-list {
+                gap: 6px;
+            }
+
+            .symptom-tag {
+                font-size: 12px;
+                padding: 4px 10px;
+            }
         }
-/* Overlay */
-.overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.4);
-    z-index: 100;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    backdrop-filter: blur(4px);
-}
 
-.overlay.active {
-    display: flex;
-}
+        /* Overlay */
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            backdrop-filter: blur(4px);
+        }
 
-.overlay-card {
-    background: var(--warm-white);
-    border-radius: 24px;
-    padding: 32px;
-    max-width: 600px;
-    width: 100%;
-    max-height: 80vh;
-    overflow-y: auto;
-    position: relative;
-    animation: fadeUp 0.3s ease forwards;
-}
+        .overlay.active {
+            display: flex;
+        }
 
-.overlay-close {
-    position: absolute;
-    top: 16px;
-    right: 20px;
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    color: var(--text-muted);
-    line-height: 1;
-}
+        .overlay-card {
+            background: var(--warm-white);
+            border-radius: 24px;
+            padding: 32px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            animation: fadeUp 0.3s ease forwards;
+        }
 
-.overlay-close:hover { color: var(--text); }
+        .overlay-close {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-muted);
+            line-height: 1;
+        }
 
+        .overlay-close:hover {
+            color: var(--text);
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <header>
             <div class="logo">
                 <svg class="logo-icon" viewBox="0 0 36 36" fill="none">
-                    <path d="M18 32C18 32 6 24 6 14C6 8.477 11.373 4 18 4C24.627 4 30 8.477 30 14C30 24 18 32 18 32Z" fill="#7a9e7e" opacity="0.3"/>
-                    <path d="M18 28C18 28 8 21 8 13C8 8.582 12.477 5 18 5C23.523 5 28 8.582 28 13C28 21 18 28 18 28Z" fill="#4a6741" opacity="0.6"/>
-                    <path d="M18 6V30M18 6C18 6 12 10 12 16M18 6C18 6 24 10 24 16" stroke="#4a6741" stroke-width="1.5" stroke-linecap="round"/>
+                    <path d="M18 32C18 32 6 24 6 14C6 8.477 11.373 4 18 4C24.627 4 30 8.477 30 14C30 24 18 32 18 32Z"
+                        fill="#7a9e7e" opacity="0.3" />
+                    <path d="M18 28C18 28 8 21 8 13C8 8.582 12.477 5 18 5C23.523 5 28 8.582 28 13C28 21 18 28 18 28Z"
+                        fill="#4a6741" opacity="0.6" />
+                    <path d="M18 6V30M18 6C18 6 12 10 12 16M18 6C18 6 24 10 24 16" stroke="#4a6741" stroke-width="1.5"
+                        stroke-linecap="round" />
                 </svg>
                 <span class="logo-text">Bloom</span>
             </div>
@@ -604,14 +736,18 @@
         <div class="upload-section" id="uploadSection">
             <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
                 <svg class="upload-icon" viewBox="0 0 64 64" fill="none">
-                    <circle cx="32" cy="32" r="28" fill="rgba(122,158,126,0.1)"/>
-                    <path d="M32 12C32 12 20 20 20 30C20 36.627 25.373 42 32 42C38.627 42 44 36.627 44 30C44 20 32 12 32 12Z" fill="rgba(122,158,126,0.3)"/>
-                    <path d="M32 18V42M32 18C32 18 26 23 26 29M32 18C32 18 38 23 38 29" stroke="#4a6741" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M24 50H40" stroke="#7a9e7e" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="32" cy="32" r="28" fill="rgba(122,158,126,0.1)" />
+                    <path
+                        d="M32 12C32 12 20 20 20 30C20 36.627 25.373 42 32 42C38.627 42 44 36.627 44 30C44 20 32 12 32 12Z"
+                        fill="rgba(122,158,126,0.3)" />
+                    <path d="M32 18V42M32 18C32 18 26 23 26 29M32 18C32 18 38 23 38 29" stroke="#4a6741"
+                        stroke-width="2" stroke-linecap="round" />
+                    <path d="M24 50H40" stroke="#7a9e7e" stroke-width="2" stroke-linecap="round" />
                 </svg>
                 <h2 class="upload-title">Show me your plant</h2>
                 <p class="upload-subtitle">Upload a photo and I'll tell you exactly what it needs</p>
-                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Choose a photo</button>
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Choose a
+                    photo</button>
                 <input type="file" id="fileInput" accept="image/*">
             </div>
             <img class="preview-image" id="previewImage" alt="Plant preview">
@@ -657,7 +793,8 @@
                         <span>✨</span>
                         <p>Generating healthy version...</p>
                     </div>
-                    <img id="healthyPlantImg" src="" alt="Healthy version" style="display:none;width:100%;height:220px;object-fit:cover;">
+                    <img id="healthyPlantImg" src="" alt="Healthy version"
+                        style="display:none;width:100%;height:220px;object-fit:cover;">
                     <div class="image-card-label">🌟 At full health</div>
                 </div>
             </div>
@@ -696,25 +833,25 @@
             <h3 class="card-title" style="margin-bottom:16px">🕐 Recent scans</h3>
             <div id="historyList"></div>
         </div>
-<!-- History Overlay -->
-<div class="overlay" id="scanOverlay">
-    <div class="overlay-card">
-        <button class="overlay-close" onclick="closeOverlay()">✕</button>
-        <h2 class="plant-name" id="overlayPlantName"></h2>
-        <p class="scientific-name" id="overlayScientific"></p>
-        <span class="health-badge" id="overlayBadge" style="margin-bottom:20px;display:inline-flex">
-            <span class="health-dot"></span>
-            <span id="overlayHealth"></span>
-        </span>
-        <p class="diagnosis-text" id="overlayDiagnosis"></p>
-        <ul class="symptoms-list" id="overlaySymptoms" style="margin:16px 0"></ul>
-        <ol class="treatment-steps" id="overlayTreatment"></ol>
-        <div class="recovery-badge" style="margin-top:16px">
-            <span>⏱</span>
-            <span id="overlayRecovery"></span>
+        <!-- History Overlay -->
+        <div class="overlay" id="scanOverlay">
+            <div class="overlay-card">
+                <button class="overlay-close" onclick="closeOverlay()">✕</button>
+                <h2 class="plant-name" id="overlayPlantName"></h2>
+                <p class="scientific-name" id="overlayScientific"></p>
+                <span class="health-badge" id="overlayBadge" style="margin-bottom:20px;display:inline-flex">
+                    <span class="health-dot"></span>
+                    <span id="overlayHealth"></span>
+                </span>
+                <p class="diagnosis-text" id="overlayDiagnosis"></p>
+                <ul class="symptoms-list" id="overlaySymptoms" style="margin:16px 0"></ul>
+                <ol class="treatment-steps" id="overlayTreatment"></ol>
+                <div class="recovery-badge" style="margin-top:16px">
+                    <span>⏱</span>
+                    <span id="overlayRecovery"></span>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
 
         <footer>
             Powered by <span>Gemini Vision</span> & <span>Imagen</span> on Google Cloud · <span>Vertex AI</span>
@@ -725,23 +862,23 @@
         // Load scan history on page load
         async function loadHistory() {
             try {
-                const res  = await fetch('/history');
+                const res = await fetch('/history');
                 const data = await res.json();
                 if (!data.scans || data.scans.length === 0) return;
 
                 const section = document.getElementById('historySection');
-                const list    = document.getElementById('historyList');
+                const list = document.getElementById('historyList');
                 section.style.display = 'block';
                 list.innerHTML = '';
 
-data.scans.forEach(scan => {
-    const time = scan.created_at
-        ? new Date(scan.created_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })
-        : '';
-    const div = document.createElement('div');
-    div.className = 'history-item';
-    div.style.cursor = 'pointer';
-    div.innerHTML = `
+                data.scans.forEach(scan => {
+                    const time = scan.created_at
+                        ? new Date(scan.created_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })
+                        : '';
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.style.cursor = 'pointer';
+                    div.innerHTML = `
         <span class="history-dot ${scan.health || ''}"></span>
         <div class="history-info">
             <p class="history-plant">${scan.plant_name || 'Unknown plant'}</p>
@@ -749,24 +886,24 @@ data.scans.forEach(scan => {
         </div>
         <span class="history-time">${time}</span>
     `;
-    div.addEventListener('click', async () => {
-        loading.classList.add('active');
-        results.classList.remove('active');
-        uploadSection.scrollIntoView({ behavior: 'smooth' });
-        try {
-            const res  = await fetch(`/scan/${scan.id}`);
-            const data = await res.json();
-            if (data.success) {
-           showScanOverlay(data);
-            }
-        } catch (e) {
-            showError('Could not load scan details.');
-        } finally {
-            loading.classList.remove('active');
-        }
-    });
-    list.appendChild(div);
-});
+                    div.addEventListener('click', async () => {
+                        loading.classList.add('active');
+                        results.classList.remove('active');
+                        uploadSection.scrollIntoView({ behavior: 'smooth' });
+                        try {
+                            const res = await fetch(`/scan/${scan.id}`);
+                            const data = await res.json();
+                            if (data.success) {
+                                showScanOverlay(data);
+                            }
+                        } catch (e) {
+                            showError('Could not load scan details.');
+                        } finally {
+                            loading.classList.remove('active');
+                        }
+                    });
+                    list.appendChild(div);
+                });
 
                 data.scans.forEach(scan => {
                     const time = scan.created_at
@@ -872,7 +1009,7 @@ data.scans.forEach(scan => {
             badge.className = `health-badge ${d.health_status}`;
             document.getElementById('healthText').textContent =
                 d.health_status === 'healthy' ? 'Looking healthy!' :
-                d.health_status === 'struggling' ? 'Struggling a little' : 'Needs urgent help';
+                    d.health_status === 'struggling' ? 'Struggling a little' : 'Needs urgent help';
 
             // Uploaded image
             document.getElementById('uploadedPlantImg').src = `data:image/jpeg;base64,${data.uploaded_image}`;
@@ -939,4 +1076,5 @@ data.scans.forEach(scan => {
         }
     </script>
 </body>
+
 </html>
