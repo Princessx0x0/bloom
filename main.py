@@ -1,58 +1,61 @@
-import os
-import base64
-import json
-import hashlib
-import time
-import uuid
-import io
-import logging
-from datetime import datetime, timezone
-from collections import defaultdict
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI, File, UploadFile, Request, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-from PIL import Image
-
-from google.cloud import secretmanager, firestore
 import google.generativeai as genai
+from google.cloud import secretmanager, firestore
+from PIL import Image
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, File, UploadFile, Request, HTTPException
+from contextlib import asynccontextmanager
+from collections import defaultdict
+from datetime import datetime, timezone
+import logging
+import io
+import uuid
+import time
+import hashlib
+import json
+import base64
+import os
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("bloom")
 
-PROJECT_ID              = os.environ.get("GCP_PROJECT_ID", "bloom-496623")
-ALLOWED_MIME_TYPES      = {"image/jpeg", "image/png", "image/webp", "image/heic"}
-MAX_FILE_SIZE_BYTES     = 10 * 1024 * 1024
+PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "bloom-496623")
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic"}
+MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
 MAX_REQUESTS_PER_MINUTE = 10
-MAX_REQUESTS_PER_DAY    = 100
+MAX_REQUESTS_PER_DAY = 100
 
 rate_store: dict[str, list[float]] = defaultdict(list)
 
+
 def is_rate_limited(ip: str) -> bool:
-    now        = time.time()
+    now = time.time()
     minute_ago = now - 60
-    day_ago    = now - 86400
+    day_ago = now - 86400
     rate_store[ip] = [t for t in rate_store[ip] if t > day_ago]
     per_minute = sum(1 for t in rate_store[ip] if t > minute_ago)
-    per_day    = len(rate_store[ip])
+    per_day = len(rate_store[ip])
     if per_minute >= MAX_REQUESTS_PER_MINUTE or per_day >= MAX_REQUESTS_PER_DAY:
         return True
     rate_store[ip].append(now)
     return False
 
+
 def get_secret(secret_id: str) -> str:
     try:
         client = secretmanager.SecretManagerServiceClient()
-        name   = f"projects/{PROJECT_ID}/secrets/{secret_id}/versions/latest"
-        resp   = client.access_secret_version(request={"name": name})
+        name = f"projects/{PROJECT_ID}/secrets/{secret_id}/versions/latest"
+        resp = client.access_secret_version(request={"name": name})
         return resp.payload.data.decode("UTF-8").strip()
     except Exception as e:
         logger.warning(f"Secret Manager failed for {secret_id}: {e}")
         return os.environ.get(secret_id.upper().replace("-", "_"), "")
 
+
 db: firestore.Client | None = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -84,16 +87,20 @@ app.add_middleware(
 
 templates = Jinja2Templates(directory="templates")
 
+
 def validate_image(file: UploadFile, image_bytes: bytes) -> None:
     if file.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(status_code=415, detail="Unsupported file type.")
     if len(image_bytes) > MAX_FILE_SIZE_BYTES:
-        raise HTTPException(status_code=413, detail="Image too large. Maximum size is 10MB.")
+        raise HTTPException(
+            status_code=413, detail="Image too large. Maximum size is 10MB.")
     try:
         img = Image.open(io.BytesIO(image_bytes))
         img.verify()
     except Exception:
-        raise HTTPException(status_code=422, detail="File does not appear to be a valid image.")
+        raise HTTPException(
+            status_code=422, detail="File does not appear to be a valid image.")
+
 
 def get_client_ip(request: Request) -> str:
     forwarded = request.headers.get("X-Forwarded-For")
@@ -101,13 +108,16 @@ def get_client_ip(request: Request) -> str:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
+
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "bloom"}
+
 
 @app.get("/history")
 async def get_history():
@@ -134,6 +144,7 @@ async def get_history():
     except Exception as e:
         logger.error(f"Firestore read error: {e}")
         return JSONResponse({"scans": []})
+
 
 @app.get("/scan/{scan_id}")
 async def get_scan(scan_id: str):
@@ -166,23 +177,25 @@ async def get_scan(scan_id: str):
         logger.error(f"Firestore fetch error: {e}")
         raise HTTPException(status_code=500, detail="Could not retrieve scan")
 
+
 @app.post("/diagnose")
 async def diagnose_plant(request: Request, file: UploadFile = File(...)):
     ip = get_client_ip(request)
 
     if is_rate_limited(ip):
-        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment.")
+        raise HTTPException(
+            status_code=429, detail="Too many requests. Please wait a moment.")
 
     image_bytes = await file.read()
     validate_image(file, image_bytes)
 
-    pil_image   = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    buffer      = io.BytesIO()
+    pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    buffer = io.BytesIO()
     pil_image.save(buffer, format="JPEG", quality=85)
     clean_bytes = buffer.getvalue()
-    img_b64     = base64.b64encode(clean_bytes).decode()
+    img_b64 = base64.b64encode(clean_bytes).decode()
 
-    scan_id         = str(uuid.uuid4())
+    scan_id = str(uuid.uuid4())
     img_fingerprint = hashlib.sha256(clean_bytes).hexdigest()[:16]
     logger.info(f"[{scan_id}] Diagnosing — fingerprint={img_fingerprint}")
 
@@ -210,7 +223,7 @@ async def diagnose_plant(request: Request, file: UploadFile = File(...)):
 }"""
 
         image_part = {"mime_type": "image/jpeg", "data": clean_bytes}
-        response   = model.generate_content([prompt, image_part])
+        response = model.generate_content([prompt, image_part])
 
         raw = response.text.strip()
         if "```json" in raw:
@@ -219,14 +232,17 @@ async def diagnose_plant(request: Request, file: UploadFile = File(...)):
             raw = raw.split("```")[1].split("```")[0].strip()
 
         diagnosis = json.loads(raw)
-        logger.info(f"[{scan_id}] Diagnosed: {diagnosis.get('plant_name')} — {diagnosis.get('health_status')}")
+        logger.info(
+            f"[{scan_id}] Diagnosed: {diagnosis.get('plant_name')} — {diagnosis.get('health_status')}")
 
     except json.JSONDecodeError:
         logger.error(f"[{scan_id}] JSON parse failed")
-        raise HTTPException(status_code=500, detail="Could not parse plant diagnosis. Please try again.")
+        raise HTTPException(
+            status_code=500, detail="Could not parse plant diagnosis. Please try again.")
     except Exception as e:
         logger.error(f"[{scan_id}] Gemini error: {e}")
-        raise HTTPException(status_code=500, detail="Diagnosis service unavailable. Please try again.")
+        raise HTTPException(
+            status_code=500, detail="Diagnosis service unavailable. Please try again.")
 
     healthy_b64 = None
     try:
@@ -242,7 +258,8 @@ async def diagnose_plant(request: Request, file: UploadFile = File(...)):
         if imagen_response.candidates:
             for part in imagen_response.candidates[0].content.parts:
                 if hasattr(part, 'inline_data') and part.inline_data:
-                    healthy_b64 = base64.b64encode(part.inline_data.data).decode()
+                    healthy_b64 = base64.b64encode(
+                        part.inline_data.data).decode()
                     break
         logger.info(f"[{scan_id}] Imagen generated successfully")
     except Exception as e:
@@ -265,8 +282,11 @@ async def diagnose_plant(request: Request, file: UploadFile = File(...)):
                 "created_at":      datetime.now(timezone.utc),
             })
             logger.info(f"[{scan_id}] Saved to Firestore")
+
         except Exception as e:
-            logger.warning(f"[{scan_id}] Firestore write failed (non-fatal): {e}")
+            logger.warning(
+                f"[{scan_id}] Firestore write failed (non-fatal): {e}"
+            )
 
     return JSONResponse({
         "success":        True,
