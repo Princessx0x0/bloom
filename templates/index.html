@@ -279,8 +279,7 @@
         /* Image comparison */
         .image-comparison {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            grid-template-columns: 1fr 1fr;            gap: 16px;
             margin-bottom: 20px;
         }
 
@@ -491,6 +490,7 @@
         }
 
         .history-item {
+            cursor: pointer;
             background: white;
             border-radius: 14px;
             padding: 16px 20px;
@@ -541,6 +541,49 @@
             .plant-identity { flex-direction: column; text-align: center; }
             .upload-zone { padding: 40px 24px; }
         }
+/* Overlay */
+.overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    backdrop-filter: blur(4px);
+}
+
+.overlay.active {
+    display: flex;
+}
+
+.overlay-card {
+    background: var(--warm-white);
+    border-radius: 24px;
+    padding: 32px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    animation: fadeUp 0.3s ease forwards;
+}
+
+.overlay-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--text-muted);
+    line-height: 1;
+}
+
+.overlay-close:hover { color: var(--text); }
+
     </style>
 </head>
 <body>
@@ -559,7 +602,7 @@
 
         <!-- Upload Section -->
         <div class="upload-section" id="uploadSection">
-            <div class="upload-zone" id="uploadZone">
+            <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
                 <svg class="upload-icon" viewBox="0 0 64 64" fill="none">
                     <circle cx="32" cy="32" r="28" fill="rgba(122,158,126,0.1)"/>
                     <path d="M32 12C32 12 20 20 20 30C20 36.627 25.373 42 32 42C38.627 42 44 36.627 44 30C44 20 32 12 32 12Z" fill="rgba(122,158,126,0.3)"/>
@@ -568,7 +611,7 @@
                 </svg>
                 <h2 class="upload-title">Show me your plant</h2>
                 <p class="upload-subtitle">Upload a photo and I'll tell you exactly what it needs</p>
-                <label class="upload-btn" for="fileInput">Choose a photo</label>
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Choose a photo</button>
                 <input type="file" id="fileInput" accept="image/*">
             </div>
             <img class="preview-image" id="previewImage" alt="Plant preview">
@@ -653,6 +696,25 @@
             <h3 class="card-title" style="margin-bottom:16px">🕐 Recent scans</h3>
             <div id="historyList"></div>
         </div>
+<!-- History Overlay -->
+<div class="overlay" id="scanOverlay">
+    <div class="overlay-card">
+        <button class="overlay-close" onclick="closeOverlay()">✕</button>
+        <h2 class="plant-name" id="overlayPlantName"></h2>
+        <p class="scientific-name" id="overlayScientific"></p>
+        <span class="health-badge" id="overlayBadge" style="margin-bottom:20px;display:inline-flex">
+            <span class="health-dot"></span>
+            <span id="overlayHealth"></span>
+        </span>
+        <p class="diagnosis-text" id="overlayDiagnosis"></p>
+        <ul class="symptoms-list" id="overlaySymptoms" style="margin:16px 0"></ul>
+        <ol class="treatment-steps" id="overlayTreatment"></ol>
+        <div class="recovery-badge" style="margin-top:16px">
+            <span>⏱</span>
+            <span id="overlayRecovery"></span>
+        </div>
+    </div>
+</div>
 
         <footer>
             Powered by <span>Gemini Vision</span> & <span>Imagen</span> on Google Cloud · <span>Vertex AI</span>
@@ -671,6 +733,40 @@
                 const list    = document.getElementById('historyList');
                 section.style.display = 'block';
                 list.innerHTML = '';
+
+data.scans.forEach(scan => {
+    const time = scan.created_at
+        ? new Date(scan.created_at).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })
+        : '';
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.style.cursor = 'pointer';
+    div.innerHTML = `
+        <span class="history-dot ${scan.health || ''}"></span>
+        <div class="history-info">
+            <p class="history-plant">${scan.plant_name || 'Unknown plant'}</p>
+            <p class="history-diagnosis">${scan.diagnosis || ''}</p>
+        </div>
+        <span class="history-time">${time}</span>
+    `;
+    div.addEventListener('click', async () => {
+        loading.classList.add('active');
+        results.classList.remove('active');
+        uploadSection.scrollIntoView({ behavior: 'smooth' });
+        try {
+            const res  = await fetch(`/scan/${scan.id}`);
+            const data = await res.json();
+            if (data.success) {
+           showScanOverlay(data);
+            }
+        } catch (e) {
+            showError('Could not load scan details.');
+        } finally {
+            loading.classList.remove('active');
+        }
+    });
+    list.appendChild(div);
+});
 
                 data.scans.forEach(scan => {
                     const time = scan.created_at

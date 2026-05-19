@@ -16,84 +16,77 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 
-# Google Cloud
-from google.cloud import firestore
-import vertexai
-from vertexai.generative_models import GenerativeModel, Part
-from vertexai.preview.vision_models import ImageGenerationModel
+from google.cloud import secretmanager, firestore
+import google.generativeai as genai
 
-# ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("bloom")
 
-# ── Config ─────────────────────────────────────────────────────────────────────
-PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "bloom-496623")
-REGION     = os.environ.get("GCP_REGION", "us-central1")
-
+PROJECT_ID              = os.environ.get("GCP_PROJECT_ID", "bloom-496623")
 ALLOWED_MIME_TYPES      = {"image/jpeg", "image/png", "image/webp", "image/heic"}
-MAX_FILE_SIZE_BYTES     = 10 * 1024 * 1024  # 10MB
+MAX_FILE_SIZE_BYTES     = 10 * 1024 * 1024
 MAX_REQUESTS_PER_MINUTE = 10
 MAX_REQUESTS_PER_DAY    = 100
 
-# ── In-memory rate limiter (per IP) ───────────────────────────────────────────
 rate_store: dict[str, list[float]] = defaultdict(list)
 
 def is_rate_limited(ip: str) -> bool:
     now        = time.time()
     minute_ago = now - 60
     day_ago    = now - 86400
-
     rate_store[ip] = [t for t in rate_store[ip] if t > day_ago]
-
     per_minute = sum(1 for t in rate_store[ip] if t > minute_ago)
     per_day    = len(rate_store[ip])
-
     if per_minute >= MAX_REQUESTS_PER_MINUTE or per_day >= MAX_REQUESTS_PER_DAY:
         return True
-
     rate_store[ip].append(now)
     return False
 
-# ── Firestore client ───────────────────────────────────────────────────────────
+def get_secret(secret_id: str) -> str:
+    try:
+        client = secretmanager.SecretManagerServiceClient()
+        name   = f"projects/{PROJECT_ID}/secrets/{secret_id}/versions/latest"
+        resp   = client.access_secret_version(request={"name": name})
+        return resp.payload.data.decode("UTF-8").strip()
+    except Exception as e:
+        logger.warning(f"Secret Manager failed for {secret_id}: {e}")
+        return os.environ.get(secret_id.upper().replace("-", "_"), "")
+
 db: firestore.Client | None = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global db
     logger.info("🌿 Bloom starting up...")
-
-    vertexai.init(project=PROJECT_ID, location=REGION)
-    logger.info(f"✅ Vertex AI initialised — project={PROJECT_ID} region={REGION}")
-
+    api_key = get_secret("gemini-api-key")
+    if api_key:
+        genai.configure(api_key=api_key)
+        logger.info("✅ Gemini API configured from Secret Manager")
+    else:
+        logger.error("❌ No Gemini API key found")
     try:
         db = firestore.Client(project=PROJECT_ID)
         logger.info("✅ Firestore connected")
     except Exception as e:
         logger.warning(f"⚠️  Firestore unavailable: {e}")
         db = None
-
     yield
     logger.info("🌿 Bloom shutting down")
 
-# ── App ────────────────────────────────────────────────────────────────────────
 app = FastAPI(title="Bloom", docs_url=None, redoc_url=None, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten to your Cloud Run URL after deploy
+    allow_origins=["*"],
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
 
 templates = Jinja2Templates(directory="templates")
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
 def validate_image(file: UploadFile, image_bytes: bytes) -> None:
     if file.content_type not in ALLOWED_MIME_TYPES:
-        raise HTTPException(
-            status_code=415,
-            detail=f"Unsupported file type. Please upload a JPEG, PNG, or WebP image."
-        )
+        raise HTTPException(status_code=415, detail="Unsupported file type.")
     if len(image_bytes) > MAX_FILE_SIZE_BYTES:
         raise HTTPException(status_code=413, detail="Image too large. Maximum size is 10MB.")
     try:
@@ -108,7 +101,6 @@ def get_client_ip(request: Request) -> str:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
-# ── Routes ─────────────────────────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -132,33 +124,58 @@ async def get_history():
         for doc in docs:
             data = doc.to_dict()
             scans.append({
-                "id":          doc.id,
-                "plant_name":  data.get("plant_name"),
-                "health":      data.get("health_status"),
-                "diagnosis":   data.get("diagnosis"),
-                "created_at":  data.get("created_at").isoformat() if data.get("created_at") else None,
+                "id":         doc.id,
+                "plant_name": data.get("plant_name"),
+                "health":     data.get("health_status"),
+                "diagnosis":  data.get("diagnosis"),
+                "created_at": data.get("created_at").isoformat() if data.get("created_at") else None,
             })
         return JSONResponse({"scans": scans})
     except Exception as e:
         logger.error(f"Firestore read error: {e}")
         return JSONResponse({"scans": []})
 
+@app.get("/scan/{scan_id}")
+async def get_scan(scan_id: str):
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    try:
+        doc = db.collection("scans").document(scan_id).get()
+        if not doc.exists:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        data = doc.to_dict()
+        return JSONResponse({
+            "success": True,
+            "scan_id": scan_id,
+            "diagnosis": {
+                "plant_name":      data.get("plant_name"),
+                "scientific_name": data.get("scientific_name"),
+                "health_status":   data.get("health_status"),
+                "diagnosis":       data.get("diagnosis"),
+                "symptoms":        data.get("symptoms", []),
+                "treatment":       data.get("treatment", []),
+                "recovery_time":   data.get("recovery_time"),
+                "care_tip":        data.get("care_tip", ""),
+            },
+            "uploaded_image": None,
+            "healthy_image":  None,
+        })
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Firestore fetch error: {e}")
+        raise HTTPException(status_code=500, detail="Could not retrieve scan")
+
 @app.post("/diagnose")
 async def diagnose_plant(request: Request, file: UploadFile = File(...)):
     ip = get_client_ip(request)
 
-    # Rate limit
     if is_rate_limited(ip):
-        raise HTTPException(
-            status_code=429,
-            detail="Too many requests. Please wait a moment before trying again."
-        )
+        raise HTTPException(status_code=429, detail="Too many requests. Please wait a moment.")
 
-    # Read & validate
     image_bytes = await file.read()
     validate_image(file, image_bytes)
 
-    # Normalise to JPEG
     pil_image   = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     buffer      = io.BytesIO()
     pil_image.save(buffer, format="JPEG", quality=85)
@@ -167,12 +184,11 @@ async def diagnose_plant(request: Request, file: UploadFile = File(...)):
 
     scan_id         = str(uuid.uuid4())
     img_fingerprint = hashlib.sha256(clean_bytes).hexdigest()[:16]
-    logger.info(f"[{scan_id}] Diagnosing — fingerprint={img_fingerprint} ip_hash={hashlib.sha256(ip.encode()).hexdigest()[:8]}")
+    logger.info(f"[{scan_id}] Diagnosing — fingerprint={img_fingerprint}")
 
-    # Gemini Vision via Vertex AI
     try:
-        model = GenerativeModel(
-            "gemini-1.5-pro",
+        model = genai.GenerativeModel(
+            "gemini-2.5-flash",
             system_instruction=(
                 "You are Bloom, a warm and knowledgeable plant doctor. "
                 "You diagnose plants with care and always encourage the owner. "
@@ -190,10 +206,10 @@ async def diagnose_plant(request: Request, file: UploadFile = File(...)):
     "treatment": ["Actionable step 1", "Actionable step 2", "Actionable step 3"],
     "recovery_time": "Realistic timeframe with consistent care",
     "care_tip": "One encouraging sentence about this plant species personality",
-    "healthy_prompt": "Detailed Imagen prompt: lush healthy [species], vibrant foliage, studio lighting, botanical illustration style, white background"
+    "healthy_prompt": "Detailed prompt: lush healthy [species], vibrant foliage, studio lighting, botanical illustration style, white background"
 }"""
 
-        image_part = Part.from_data(data=clean_bytes, mime_type="image/jpeg")
+        image_part = {"mime_type": "image/jpeg", "data": clean_bytes}
         response   = model.generate_content([prompt, image_part])
 
         raw = response.text.strip()
@@ -203,35 +219,35 @@ async def diagnose_plant(request: Request, file: UploadFile = File(...)):
             raw = raw.split("```")[1].split("```")[0].strip()
 
         diagnosis = json.loads(raw)
+        logger.info(f"[{scan_id}] Diagnosed: {diagnosis.get('plant_name')} — {diagnosis.get('health_status')}")
 
     except json.JSONDecodeError:
         logger.error(f"[{scan_id}] JSON parse failed")
         raise HTTPException(status_code=500, detail="Could not parse plant diagnosis. Please try again.")
     except Exception as e:
-        logger.error(f"[{scan_id}] Vertex AI error: {e}")
+        logger.error(f"[{scan_id}] Gemini error: {e}")
         raise HTTPException(status_code=500, detail="Diagnosis service unavailable. Please try again.")
 
-    # Imagen — healthy plant
     healthy_b64 = None
     try:
-        imagen = ImageGenerationModel.from_pretrained("imagegeneration@006")
+        imagen_model = genai.GenerativeModel("gemini-2.0-flash-exp")
         healthy_prompt = diagnosis.get(
             "healthy_prompt",
             f"A perfectly healthy {diagnosis['plant_name']}, lush vibrant foliage, botanical illustration, studio lighting, white background"
         )
-        img_response = imagen.generate_images(
-            prompt=healthy_prompt,
-            number_of_images=1,
-            aspect_ratio="1:1",
-            safety_filter_level="block_few",
+        imagen_response = imagen_model.generate_content(
+            [f"Generate a photorealistic image of: {healthy_prompt}"],
+            generation_config={"response_mime_type": "image/jpeg"}
         )
-        if img_response.images:
-            healthy_b64 = base64.b64encode(img_response.images[0]._image_bytes).decode()
-            logger.info(f"[{scan_id}] Imagen generated successfully")
+        if imagen_response.candidates:
+            for part in imagen_response.candidates[0].content.parts:
+                if hasattr(part, 'inline_data') and part.inline_data:
+                    healthy_b64 = base64.b64encode(part.inline_data.data).decode()
+                    break
+        logger.info(f"[{scan_id}] Imagen generated successfully")
     except Exception as e:
         logger.warning(f"[{scan_id}] Imagen error (non-fatal): {e}")
 
-    # Firestore — persist scan
     if db is not None:
         try:
             db.collection("scans").document(scan_id).set({
@@ -245,6 +261,7 @@ async def diagnose_plant(request: Request, file: UploadFile = File(...)):
                 "symptoms":        diagnosis.get("symptoms", []),
                 "treatment":       diagnosis.get("treatment", []),
                 "recovery_time":   diagnosis.get("recovery_time"),
+                "care_tip":        diagnosis.get("care_tip", ""),
                 "created_at":      datetime.now(timezone.utc),
             })
             logger.info(f"[{scan_id}] Saved to Firestore")

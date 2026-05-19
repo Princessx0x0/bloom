@@ -3,9 +3,6 @@ uvicorn==0.29.0
 python-multipart==0.0.9
 Pillow==10.3.0
 jinja2==3.1.4
-
-# Google Cloud
-google-cloud-aiplatform==1.71.1
+google-generativeai==0.8.3
 google-cloud-firestore==2.16.0
 google-cloud-secret-manager==2.20.0
-vertexai==1.71.1

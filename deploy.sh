@@ -124,7 +124,7 @@ gcloud run deploy $SERVICE_NAME \
   --region $REGION \
   --allow-unauthenticated \
   --service-account $BLOOM_SA_EMAIL \
-  --set-env-vars GCP_PROJECT_ID=$PROJECT_ID,GCP_REGION=us-central1 \
+  --set-env-vars GCP_PROJECT_ID=$PROJECT_ID,GCP_REGION=us-east1 \
   --memory 1Gi \
   --cpu 1 \
   --concurrency 10 \
